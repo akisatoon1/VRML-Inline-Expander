@@ -17,22 +17,32 @@ func TestCLI(t *testing.T) {
 
 	// Test cases
 	testCases := []struct {
-		name       string
-		sampleDir  string
-		inputFile  string
-		outputFile string
+		name        string
+		sampleDir   string
+		inputFile   string
+		outputFile  string
+		shouldError bool
 	}{
 		{
-			name:       "sample1",
-			sampleDir:  "sample1",
-			inputFile:  "top.wrl",
-			outputFile: "merged.wrl",
+			name:        "sample1",
+			sampleDir:   "sample1",
+			inputFile:   "top.wrl",
+			outputFile:  "merged.wrl",
+			shouldError: false,
 		},
 		{
-			name:       "sample2",
-			sampleDir:  "sample2",
-			inputFile:  "top.wrl",
-			outputFile: "merged.wrl",
+			name:        "sample2",
+			sampleDir:   "sample2",
+			inputFile:   "top.wrl",
+			outputFile:  "merged.wrl",
+			shouldError: false,
+		},
+		{
+			name:        "sample3 - nonexistent referenced file",
+			sampleDir:   "sample3",
+			inputFile:   "top.wrl",
+			outputFile:  "merged.wrl",
+			shouldError: true,
 		},
 	}
 
@@ -48,11 +58,6 @@ func TestCLI(t *testing.T) {
 				t.Skipf("Input file not found: %s", inputPath)
 			}
 
-			// Check if expected file exists (skip if not)
-			if _, err := os.Stat(expectedPath); os.IsNotExist(err) {
-				t.Skipf("Expected file not found: %s", expectedPath)
-			}
-
 			// Create output directory if not exists
 			outputDir := filepath.Join("testdata", "output", tc.sampleDir)
 			if err := os.MkdirAll(outputDir, 0755); err != nil {
@@ -62,8 +67,24 @@ func TestCLI(t *testing.T) {
 			// Execute CLI tool
 			cmd := exec.Command("./vrml-inline-expander", inputPath, outputPath)
 			output, err := cmd.CombinedOutput()
+
+			if tc.shouldError {
+				// Error is expected
+				if err == nil {
+					t.Fatalf("Expected CLI to fail, but it succeeded\nOutput: %s", output)
+				}
+				t.Logf("CLI failed as expected: %v\nOutput: %s", err, output)
+				return
+			}
+
+			// No error expected
 			if err != nil {
 				t.Fatalf("CLI execution failed: %v\nOutput: %s", err, output)
+			}
+
+			// Check if expected file exists (skip if not)
+			if _, err := os.Stat(expectedPath); os.IsNotExist(err) {
+				t.Skipf("Expected file not found: %s", expectedPath)
 			}
 
 			// Read output file
