@@ -44,6 +44,13 @@ func TestCLI(t *testing.T) {
 			outputFile:  "merged.wrl",
 			shouldError: true,
 		},
+		{
+			name:        "sample4 - cyclic reference",
+			sampleDir:   "sample4",
+			inputFile:   "top.wrl",
+			outputFile:  "merged.wrl",
+			shouldError: true,
+		},
 	}
 
 	for _, tc := range testCases {
