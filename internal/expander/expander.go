@@ -10,6 +10,33 @@ import (
 	"github.com/akisatoon1/VRML-Inline-Expander/internal/writer"
 )
 
+// ProcessingStack manages files currently being processed to detect circular references
+type ProcessingStack struct {
+	files map[string]bool
+}
+
+// newProcessingStack creates a new ProcessingStack
+func newProcessingStack() *ProcessingStack {
+	return &ProcessingStack{
+		files: make(map[string]bool),
+	}
+}
+
+// Enter adds a file to the processing stack
+// Returns error if the file is already being processed (circular reference)
+func (ps *ProcessingStack) Enter(path string) error {
+	if ps.files[path] {
+		return fmt.Errorf("circular reference detected: %s", path)
+	}
+	ps.files[path] = true
+	return nil
+}
+
+// Exit removes a file from the processing stack
+func (ps *ProcessingStack) Exit(path string) {
+	delete(ps.files, path)
+}
+
 // Expander handles the expansion of Inline nodes
 type Expander struct {
 	parser *parser.Parser
@@ -34,7 +61,10 @@ type nodeWithContent struct {
 
 // Expand expands Inline nodes in the input file and writes the result to the output file
 func (e *Expander) Expand(inputPath, outputPath string) error {
-	expandedLines, err := e.expandInlineNodes(inputPath)
+	// Initialize processing stack for circular reference detection
+	stack := newProcessingStack()
+
+	expandedLines, err := e.expandInlineNodes(inputPath, stack)
 	if err != nil {
 		return fmt.Errorf("failed to expand Inline nodes: %w", err)
 	}
@@ -46,11 +76,18 @@ func (e *Expander) Expand(inputPath, outputPath string) error {
 	return nil
 }
 
-func (e *Expander) expandInlineNodes(path string) ([]string, error) {
+func (e *Expander) expandInlineNodes(path string, stack *ProcessingStack) ([]string, error) {
 	lines, err := e.reader.Read(path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read input file: %w", err)
 	}
+
+	// Circular reference guard - check if already processing this file
+	if err := stack.Enter(path); err != nil {
+		return nil, err
+	}
+	// Exit on function completion
+	defer stack.Exit(path)
 
 	nodes, err := e.parser.FindInlineNodes(lines)
 	if err != nil {
@@ -63,7 +100,8 @@ func (e *Expander) expandInlineNodes(path string) ([]string, error) {
 	for i, node := range nodes {
 		refPath := filepath.Join(baseDir, node.UrlPath)
 
-		refLines, err := e.expandInlineNodes(refPath)
+		// Recursive call with stack
+		refLines, err := e.expandInlineNodes(refPath, stack)
 		if err != nil {
 			return nil, fmt.Errorf("failed to read referenced file '%s': %w", node.UrlPath, err)
 		}
