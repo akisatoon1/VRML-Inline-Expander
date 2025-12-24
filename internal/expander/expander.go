@@ -37,6 +37,30 @@ func (ps *ProcessingStack) Exit(path string) {
 	delete(ps.files, path)
 }
 
+// validateCircularReference checks if the path is already being processed
+func validateCircularReference(absPath string, stack *ProcessingStack) error {
+	if err := stack.Enter(absPath); err != nil {
+		return err
+	}
+	return nil
+}
+
+// removeVRMLHeader removes the VRML header line if present
+func removeVRMLHeader(lines []string) []string {
+	if len(lines) > 0 && strings.HasPrefix(strings.TrimSpace(lines[0]), "#VRML") {
+		return lines[1:]
+	}
+	return lines
+}
+
+// for using absolute path for circular reference check
+func getAbsRefPath(basePath, refPath string) (string, error) {
+	baseDir := filepath.Dir(basePath)
+	relativeRefPath := filepath.Join(baseDir, refPath)
+	absRefPath, err := filepath.Abs(relativeRefPath)
+	return absRefPath, err
+}
+
 // Expander handles the expansion of Inline nodes
 type Expander struct {
 	parser *parser.Parser
@@ -76,18 +100,18 @@ func (e *Expander) Expand(inputPath, outputPath string) error {
 	return nil
 }
 
-func (e *Expander) expandInlineNodes(path string, stack *ProcessingStack) ([]string, error) {
-	lines, err := e.reader.Read(path)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read input file: %w", err)
-	}
-
+func (e *Expander) expandInlineNodes(absPath string, stack *ProcessingStack) ([]string, error) {
 	// Circular reference guard - check if already processing this file
-	if err := stack.Enter(path); err != nil {
+	if err := validateCircularReference(absPath, stack); err != nil {
 		return nil, err
 	}
 	// Exit on function completion
-	defer stack.Exit(path)
+	defer stack.Exit(absPath)
+
+	lines, err := e.reader.Read(absPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read input file: %w", err)
+	}
 
 	nodes, err := e.parser.FindInlineNodes(lines)
 	if err != nil {
@@ -95,30 +119,39 @@ func (e *Expander) expandInlineNodes(path string, stack *ProcessingStack) ([]str
 	}
 
 	// Read referenced files for each node
-	baseDir := filepath.Dir(path)
 	nodesWithContent := make([]nodeWithContent, len(nodes))
 	for i, node := range nodes {
-		refPath := filepath.Join(baseDir, node.UrlPath)
-
-		// Recursive call with stack
-		refLines, err := e.expandInlineNodes(refPath, stack)
+		nwc, err := e.expandInlineNode(absPath, node, stack)
 		if err != nil {
-			return nil, fmt.Errorf("failed to read referenced file '%s': %w", node.UrlPath, err)
+			return nil, err
 		}
-
-		// remove VRML header if present
-		if len(refLines) > 0 && strings.HasPrefix(strings.TrimSpace(refLines[0]), "#VRML") {
-			refLines = refLines[1:]
-		}
-
-		nodesWithContent[i] = nodeWithContent{
-			Node:     node,
-			RefLines: refLines,
-		}
+		nodesWithContent[i] = nwc
 	}
 
 	expandedLines := e.expandLines(lines, nodesWithContent)
 	return expandedLines, nil
+}
+
+// expandInlineNode expands a single Inline node
+func (e *Expander) expandInlineNode(basePath string, node parser.InlineNode, stack *ProcessingStack) (nodeWithContent, error) {
+	refAbsPath, err := getAbsRefPath(basePath, node.UrlPath)
+	if err != nil {
+		return nodeWithContent{}, fmt.Errorf("failed to resolve path for referenced file '%s': %w", node.UrlPath, err)
+	}
+
+	// Recursive call with stack
+	refLines, err := e.expandInlineNodes(refAbsPath, stack)
+	if err != nil {
+		return nodeWithContent{}, fmt.Errorf("failed to read referenced file '%s': %w", node.UrlPath, err)
+	}
+
+	// remove VRML header if present
+	refLines = removeVRMLHeader(refLines)
+
+	return nodeWithContent{
+		Node:     node,
+		RefLines: refLines,
+	}, nil
 }
 
 // expandLines expands Inline nodes in the given lines (testable)
