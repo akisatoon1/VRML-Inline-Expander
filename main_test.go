@@ -53,6 +53,13 @@ func TestCLI(t *testing.T) {
 			outputFile:  "merged.wrl",
 			shouldError: true,
 		},
+		{
+			name:        "sample5",
+			sampleDir:   "sample5",
+			inputFile:   "top.wrl",
+			outputFile:  "merged.wrl",
+			shouldError: false,
+		},
 	}
 
 	for _, tc := range testCases {
