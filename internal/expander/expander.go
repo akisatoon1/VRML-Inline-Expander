@@ -3,6 +3,7 @@ package expander
 import (
 	"fmt"
 	"path/filepath"
+	"slices"
 
 	"github.com/akisatoon1/VRML-Inline-Expander/internal/parser"
 	"github.com/akisatoon1/VRML-Inline-Expander/internal/reader" // TODO: readerやwriterは自前で実装する必要ある？
@@ -119,17 +120,18 @@ func (e *Expander) expandInlineNode(basePath string, node parser.InlineNode, sta
 
 // expandLines expands Inline nodes in the given lines (testable)
 func (e *Expander) expandLines(lines []string, nodesWithContent []nodeWithContent) ([]string, error) {
-	// Process nodes in reverse order to avoid line number shifts
 	result := lines
-	for i := len(nodesWithContent) - 1; i >= 0; i-- {
-		nwc := nodesWithContent[i]
 
+	// Process nodes in reverse order to avoid line number shifts
+	for _, nwc := range slices.Backward(nodesWithContent) {
 		groupLines := buildGroupNode(nwc.Node, nwc.RefLines)
-		var err error
-		result, err = replaceLines(result, nwc.Node.StartLine, nwc.Node.EndLine, groupLines)
+
+		res, err := replaceLines(result, nwc.Node.StartLine, nwc.Node.EndLine, groupLines)
 		if err != nil {
 			return nil, fmt.Errorf("failed to replace lines for node at line %d-%d: %w", nwc.Node.StartLine, nwc.Node.EndLine, err)
 		}
+
+		result = res
 	}
 
 	return result, nil
