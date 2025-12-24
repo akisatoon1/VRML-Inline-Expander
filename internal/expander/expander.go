@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/akisatoon1/VRML-Inline-Expander/internal/parser"
-	"github.com/akisatoon1/VRML-Inline-Expander/internal/reader"
+	"github.com/akisatoon1/VRML-Inline-Expander/internal/reader" // TODO: readerやwriterは自前で実装する必要ある？
 	"github.com/akisatoon1/VRML-Inline-Expander/internal/writer"
 )
 
@@ -34,24 +34,45 @@ type nodeWithContent struct {
 
 // Expand expands Inline nodes in the input file and writes the result to the output file
 func (e *Expander) Expand(inputPath, outputPath string) error {
-	lines, err := e.reader.Read(inputPath)
+	expandedLines, err := e.expandInlineNodes(inputPath)
 	if err != nil {
-		return fmt.Errorf("failed to read input file: %w", err)
+		return fmt.Errorf("failed to expand Inline nodes: %w", err)
+	}
+
+	if err := e.writer.Write(outputPath, expandedLines); err != nil {
+		return fmt.Errorf("failed to write output file: %w", err)
+	}
+
+	return nil
+}
+
+func (e *Expander) expandInlineNodes(path string) ([]string, error) {
+	lines, err := e.reader.Read(path)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read input file: %w", err)
 	}
 
 	nodes, err := e.parser.FindInlineNodes(lines)
 	if err != nil {
-		return fmt.Errorf("failed to parse Inline nodes: %w", err)
+		return nil, fmt.Errorf("failed to parse Inline nodes: %w", err)
 	}
 
 	// Read referenced files for each node
-	baseDir := filepath.Dir(inputPath)
+	baseDir := filepath.Dir(path)
 	nodesWithContent := make([]nodeWithContent, len(nodes))
 	for i, node := range nodes {
-		refLines, err := e.reader.ReadReferenced(baseDir, node.UrlPath)
+		refPath := filepath.Join(baseDir, node.UrlPath)
+
+		refLines, err := e.expandInlineNodes(refPath)
 		if err != nil {
-			return fmt.Errorf("failed to read referenced file %s: %w", node.UrlPath, err)
+			return nil, fmt.Errorf("failed to read referenced file '%s': %w", node.UrlPath, err)
 		}
+
+		// remove VRML header if present
+		if len(refLines) > 0 && strings.HasPrefix(strings.TrimSpace(refLines[0]), "#VRML") {
+			refLines = refLines[1:]
+		}
+
 		nodesWithContent[i] = nodeWithContent{
 			Node:     node,
 			RefLines: refLines,
@@ -59,12 +80,7 @@ func (e *Expander) Expand(inputPath, outputPath string) error {
 	}
 
 	expandedLines := e.expandLines(lines, nodesWithContent)
-
-	if err := e.writer.Write(outputPath, expandedLines); err != nil {
-		return fmt.Errorf("failed to write output file: %w", err)
-	}
-
-	return nil
+	return expandedLines, nil
 }
 
 // expandLines expands Inline nodes in the given lines (testable)
@@ -81,6 +97,7 @@ func (e *Expander) expandLines(lines []string, nodesWithContent []nodeWithConten
 	return result
 }
 
+// TODO: Expanderのメンバを使っていないけど、receiverにする必要あるの？
 // buildGroupNode builds a Group node with children from the referenced file content
 func (e *Expander) buildGroupNode(node parser.InlineNode, refLines []string) []string {
 	var result []string
@@ -111,6 +128,7 @@ func (e *Expander) buildGroupNode(node parser.InlineNode, refLines []string) []s
 	return result
 }
 
+// TODO: Expanderのメンバを使っていないけど、receiverにする必要あるの？
 // replaceLines replaces lines from startLine to endLine with newLines
 func (e *Expander) replaceLines(lines []string, startLine, endLine int, newLines []string) []string {
 	var result []string
