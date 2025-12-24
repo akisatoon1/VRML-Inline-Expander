@@ -10,21 +10,24 @@ import (
 	"github.com/akisatoon1/VRML-Inline-Expander/internal/writer"
 )
 
-// ProcessingStack manages files currently being processed to detect circular references
-type ProcessingStack struct {
+// processingStack manages files currently being processed to detect circular references
+type processingStack struct {
 	files map[string]bool
 }
 
-// newProcessingStack creates a new ProcessingStack
-func newProcessingStack() *ProcessingStack {
-	return &ProcessingStack{
+// newProcessingStack creates a new processingStack
+func newProcessingStack() *processingStack {
+	return &processingStack{
 		files: make(map[string]bool),
 	}
 }
 
 // Enter adds a file to the processing stack
 // Returns error if the file is already being processed (circular reference)
-func (ps *ProcessingStack) Enter(path string) error {
+func (ps *processingStack) Enter(path string) error {
+	if ps == nil {
+		return fmt.Errorf("processing stack is nil")
+	}
 	if ps.files[path] {
 		return fmt.Errorf("circular reference detected: %s", path)
 	}
@@ -33,16 +36,11 @@ func (ps *ProcessingStack) Enter(path string) error {
 }
 
 // Exit removes a file from the processing stack
-func (ps *ProcessingStack) Exit(path string) {
-	delete(ps.files, path)
-}
-
-// validateCircularReference checks if the path is already being processed
-func validateCircularReference(absPath string, stack *ProcessingStack) error {
-	if err := stack.Enter(absPath); err != nil {
-		return err
+func (ps *processingStack) Exit(path string) {
+	if ps == nil || ps.files == nil {
+		return // TODO: 異常終了するべき
 	}
-	return nil
+	delete(ps.files, path)
 }
 
 // removeVRMLHeader removes the VRML header line if present
@@ -53,12 +51,17 @@ func removeVRMLHeader(lines []string) []string {
 	return lines
 }
 
-// for using absolute path for circular reference check
-func getAbsRefPath(basePath, refPath string) (string, error) {
-	baseDir := filepath.Dir(basePath)
-	relativeRefPath := filepath.Join(baseDir, refPath)
-	absRefPath, err := filepath.Abs(relativeRefPath)
-	return absRefPath, err
+// resolveAbsolutePath resolves a relative path to an absolute path based on the base file path
+// baseFilePath: the absolute path of the file containing the reference
+// relativePath: the relative path to resolve
+func resolveAbsolutePath(baseFilePath, relativePath string) (absPath string, err error) {
+	baseDir := filepath.Dir(baseFilePath)
+	resolvedPath := filepath.Join(baseDir, relativePath)
+	absPath, err = filepath.Abs(resolvedPath)
+	if err != nil {
+		return "", fmt.Errorf("failed to get absolute path for '%s' (base: %s): %w", relativePath, baseFilePath, err)
+	}
+	return absPath, nil
 }
 
 // Expander handles the expansion of Inline nodes
@@ -85,10 +88,22 @@ type nodeWithContent struct {
 
 // Expand expands Inline nodes in the input file and writes the result to the output file
 func (e *Expander) Expand(inputPath, outputPath string) error {
+	if e == nil {
+		return fmt.Errorf("expander is nil")
+	}
+	if e.parser == nil || e.reader == nil || e.writer == nil {
+		return fmt.Errorf("expander not properly initialized, use New()")
+	}
+
 	// Initialize processing stack for circular reference detection
 	stack := newProcessingStack()
 
-	expandedLines, err := e.expandInlineNodes(inputPath, stack)
+	inputAbsPath, err := filepath.Abs(inputPath)
+	if err != nil {
+		return fmt.Errorf("failed to get absolute path for input file: %w", err)
+	}
+
+	expandedLines, err := e.expandInlineNodes(inputAbsPath, stack)
 	if err != nil {
 		return fmt.Errorf("failed to expand Inline nodes: %w", err)
 	}
@@ -100,9 +115,9 @@ func (e *Expander) Expand(inputPath, outputPath string) error {
 	return nil
 }
 
-func (e *Expander) expandInlineNodes(absPath string, stack *ProcessingStack) ([]string, error) {
+func (e *Expander) expandInlineNodes(absPath string, stack *processingStack) ([]string, error) {
 	// Circular reference guard - check if already processing this file
-	if err := validateCircularReference(absPath, stack); err != nil {
+	if err := stack.Enter(absPath); err != nil {
 		return nil, err
 	}
 	// Exit on function completion
@@ -128,13 +143,16 @@ func (e *Expander) expandInlineNodes(absPath string, stack *ProcessingStack) ([]
 		nodesWithContent[i] = nwc
 	}
 
-	expandedLines := e.expandLines(lines, nodesWithContent)
+	expandedLines, err := e.expandLines(lines, nodesWithContent)
+	if err != nil {
+		return nil, fmt.Errorf("failed to expand lines: %w", err)
+	}
 	return expandedLines, nil
 }
 
 // expandInlineNode expands a single Inline node
-func (e *Expander) expandInlineNode(basePath string, node parser.InlineNode, stack *ProcessingStack) (nodeWithContent, error) {
-	refAbsPath, err := getAbsRefPath(basePath, node.UrlPath)
+func (e *Expander) expandInlineNode(basePath string, node parser.InlineNode, stack *processingStack) (nodeWithContent, error) {
+	refAbsPath, err := resolveAbsolutePath(basePath, node.UrlPath)
 	if err != nil {
 		return nodeWithContent{}, fmt.Errorf("failed to resolve path for referenced file '%s': %w", node.UrlPath, err)
 	}
@@ -142,7 +160,7 @@ func (e *Expander) expandInlineNode(basePath string, node parser.InlineNode, sta
 	// Recursive call with stack
 	refLines, err := e.expandInlineNodes(refAbsPath, stack)
 	if err != nil {
-		return nodeWithContent{}, fmt.Errorf("failed to read referenced file '%s': %w", node.UrlPath, err)
+		return nodeWithContent{}, fmt.Errorf("failed to expand referenced file '%s' from '%s': %w", node.UrlPath, basePath, err)
 	}
 
 	// remove VRML header if present
@@ -155,22 +173,25 @@ func (e *Expander) expandInlineNode(basePath string, node parser.InlineNode, sta
 }
 
 // expandLines expands Inline nodes in the given lines (testable)
-func (e *Expander) expandLines(lines []string, nodesWithContent []nodeWithContent) []string {
+func (e *Expander) expandLines(lines []string, nodesWithContent []nodeWithContent) ([]string, error) {
 	// Process nodes in reverse order to avoid line number shifts
 	result := lines
 	for i := len(nodesWithContent) - 1; i >= 0; i-- {
 		nwc := nodesWithContent[i]
 
-		groupLines := e.buildGroupNode(nwc.Node, nwc.RefLines)
-		result = e.replaceLines(result, nwc.Node.StartLine, nwc.Node.EndLine, groupLines)
+		groupLines := buildGroupNode(nwc.Node, nwc.RefLines)
+		var err error
+		result, err = replaceLines(result, nwc.Node.StartLine, nwc.Node.EndLine, groupLines)
+		if err != nil {
+			return nil, fmt.Errorf("failed to replace lines for node at line %d-%d: %w", nwc.Node.StartLine, nwc.Node.EndLine, err)
+		}
 	}
 
-	return result
+	return result, nil
 }
 
-// TODO: Expanderのメンバを使っていないけど、receiverにする必要あるの？
 // buildGroupNode builds a Group node with children from the referenced file content
-func (e *Expander) buildGroupNode(node parser.InlineNode, refLines []string) []string {
+func buildGroupNode(node parser.InlineNode, refLines []string) []string {
 	var result []string
 
 	// Build the Group node header
@@ -199,9 +220,31 @@ func (e *Expander) buildGroupNode(node parser.InlineNode, refLines []string) []s
 	return result
 }
 
-// TODO: Expanderのメンバを使っていないけど、receiverにする必要あるの？
-// replaceLines replaces lines from startLine to endLine with newLines
-func (e *Expander) replaceLines(lines []string, startLine, endLine int, newLines []string) []string {
+// replaceLines replaces lines in the closed interval [startLine, endLine] with newLines.
+// Indices are 0-based and both inclusive.
+//
+// Example: replaceLines(["A", "B", "C", "D", "E"], 1, 2, ["X", "Y"]) => ["A", "X", "Y", "D", "E"]
+func replaceLines(lines []string, startLine, endLine int, newLines []string) ([]string, error) {
+	// Validate input
+	if len(lines) == 0 {
+		return nil, fmt.Errorf("cannot replace lines in empty slice")
+	}
+	if startLine < 0 {
+		return nil, fmt.Errorf("startLine cannot be negative: %d", startLine)
+	}
+	if endLine < 0 {
+		return nil, fmt.Errorf("endLine cannot be negative: %d", endLine)
+	}
+	if startLine >= len(lines) {
+		return nil, fmt.Errorf("startLine (%d) is out of range (valid range: 0-%d)", startLine, len(lines)-1)
+	}
+	if endLine >= len(lines) {
+		return nil, fmt.Errorf("endLine (%d) is out of range (valid range: 0-%d)", endLine, len(lines)-1)
+	}
+	if endLine < startLine {
+		return nil, fmt.Errorf("startLine (%d) cannot be greater than endLine (%d)", startLine, endLine)
+	}
+
 	var result []string
 
 	// Add lines before the replacement
@@ -215,5 +258,5 @@ func (e *Expander) replaceLines(lines []string, startLine, endLine int, newLines
 		result = append(result, lines[endLine+1:]...)
 	}
 
-	return result
+	return result, nil
 }
