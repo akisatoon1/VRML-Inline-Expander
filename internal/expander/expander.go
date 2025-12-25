@@ -41,17 +41,9 @@ func (e *Expander) Expand(inputPath, outputPath string) error {
 		return fmt.Errorf("expander not properly initialized, use New()")
 	}
 
-	// for circular reference detection
-	ancestors := newEmptyAncestorSet()
-
-	inputAbsPath, err := filepath.Abs(inputPath)
+	expandedLines, err := e.expandFile(inputPath)
 	if err != nil {
-		return fmt.Errorf("failed to get absolute path for input file: %w", err)
-	}
-
-	expandedLines, err := e.expandInlineNodes(inputAbsPath, ancestors)
-	if err != nil {
-		return fmt.Errorf("failed to expand Inline nodes: %w", err)
+		return fmt.Errorf("failed to expand file: %w", err)
 	}
 
 	if err := e.writer.Write(outputPath, expandedLines); err != nil {
@@ -59,6 +51,22 @@ func (e *Expander) Expand(inputPath, outputPath string) error {
 	}
 
 	return nil
+}
+
+func (e *Expander) expandFile(inputPath string) ([]string, error) {
+	// for circular reference detection
+	ancestors := newEmptyAncestorSet()
+
+	inputAbsPath, err := filepath.Abs(inputPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get absolute path for input file: %w", err)
+	}
+
+	expandedLines, err := e.expandInlineNodes(inputAbsPath, ancestors)
+	if err != nil {
+		return nil, fmt.Errorf("failed to expand Inline nodes: %w", err)
+	}
+	return expandedLines, nil
 }
 
 func (e *Expander) expandInlineNodes(absPath string, ancestors ancestorSet) ([]string, error) {
@@ -72,6 +80,19 @@ func (e *Expander) expandInlineNodes(absPath string, ancestors ancestorSet) ([]s
 		return nil, fmt.Errorf("failed to read input file: %w", err)
 	}
 
+	nodesWithContent, err := e.getNodesWithContent(absPath, lines, ancestors)
+	if err != nil {
+		return nil, err
+	}
+
+	expandedLines, err := expandLines(lines, nodesWithContent)
+	if err != nil {
+		return nil, fmt.Errorf("failed to expand lines: %w", err)
+	}
+	return expandedLines, nil
+}
+
+func (e *Expander) getNodesWithContent(absPath string, lines []string, ancestors ancestorSet) ([]nodeWithContent, error) {
 	nodes, err := e.parser.FindInlineNodes(lines)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse Inline nodes: %w", err)
@@ -87,11 +108,7 @@ func (e *Expander) expandInlineNodes(absPath string, ancestors ancestorSet) ([]s
 		nodesWithContent[i] = nwc
 	}
 
-	expandedLines, err := expandLines(lines, nodesWithContent)
-	if err != nil {
-		return nil, fmt.Errorf("failed to expand lines: %w", err)
-	}
-	return expandedLines, nil
+	return nodesWithContent, nil
 }
 
 // expandInlineNode expands a single Inline node
