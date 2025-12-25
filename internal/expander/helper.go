@@ -2,6 +2,7 @@ package expander
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -20,9 +21,20 @@ func removeVRMLHeader(lines []string) []string {
 // baseFilePath: the absolute path of the file containing the reference
 // relativePath: the relative path to resolve
 func resolveAbsolutePath(baseFilePath, relativePath string) (absPath string, err error) {
+	// Check if baseFilePath exists
+	if _, err := os.Stat(baseFilePath); err != nil {
+		if os.IsNotExist(err) {
+			return "", fmt.Errorf("baseFilePath does not exist: %s", baseFilePath)
+		}
+		return "", fmt.Errorf("failed to check baseFilePath: %w", err)
+	}
+
+	// Resolve relative path
 	baseDir := filepath.Dir(baseFilePath)
-	resolvedPath := filepath.Join(baseDir, relativePath)
-	absPath, err = filepath.Abs(resolvedPath)
+	targetPath := filepath.Join(baseDir, relativePath)
+
+	// Get absolute path
+	absPath, err = filepath.Abs(targetPath)
 	if err != nil {
 		return "", fmt.Errorf("failed to get absolute path for '%s' (base: %s): %w", relativePath, baseFilePath, err)
 	}
