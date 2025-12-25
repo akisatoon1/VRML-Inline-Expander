@@ -65,37 +65,41 @@ func buildGroupNode(node parser.InlineNode, refLines []string) []string {
 // Example: replaceLines(["A", "B", "C", "D", "E"], 1, 2, ["X", "Y"]) => ["A", "X", "Y", "D", "E"]
 func replaceLines(lines []string, startLine, endLine int, newLines []string) ([]string, error) {
 	// Validate input
-	if len(lines) == 0 {
-		return nil, fmt.Errorf("cannot replace lines in empty slice")
+	if err := validateReplaceLines(len(lines), startLine, endLine); err != nil {
+		return nil, err
+	}
+
+	result := performLineReplacement(lines, startLine, endLine, newLines)
+	return result, nil
+}
+
+// not validation
+func performLineReplacement(lines []string, startLine, endLine int, newLines []string) []string {
+	var result []string
+	result = append(result, lines[:startLine]...)
+	result = append(result, newLines...)
+	result = append(result, lines[endLine+1:]...)
+	return result
+}
+
+func validateReplaceLines(linesNum, startLine, endLine int) error {
+	if linesNum == 0 {
+		return fmt.Errorf("cannot replace lines in empty slice")
 	}
 	if startLine < 0 {
-		return nil, fmt.Errorf("startLine cannot be negative: %d", startLine)
+		return fmt.Errorf("startLine cannot be negative: %d", startLine)
 	}
 	if endLine < 0 {
-		return nil, fmt.Errorf("endLine cannot be negative: %d", endLine)
+		return fmt.Errorf("endLine cannot be negative: %d", endLine)
 	}
-	if startLine >= len(lines) {
-		return nil, fmt.Errorf("startLine (%d) is out of range (valid range: 0-%d)", startLine, len(lines)-1)
+	if startLine >= linesNum {
+		return fmt.Errorf("startLine (%d) is out of range (valid range: 0-%d)", startLine, linesNum-1)
 	}
-	if endLine >= len(lines) {
-		return nil, fmt.Errorf("endLine (%d) is out of range (valid range: 0-%d)", endLine, len(lines)-1)
+	if endLine >= linesNum {
+		return fmt.Errorf("endLine (%d) is out of range (valid range: 0-%d)", endLine, linesNum-1)
 	}
 	if endLine < startLine {
-		return nil, fmt.Errorf("startLine (%d) cannot be greater than endLine (%d)", startLine, endLine)
+		return fmt.Errorf("startLine (%d) cannot be greater than endLine (%d)", startLine, endLine)
 	}
-
-	var result []string
-
-	// Add lines before the replacement
-	result = append(result, lines[:startLine]...)
-
-	// Add the new lines
-	result = append(result, newLines...)
-
-	// Add lines after the replacement
-	if endLine+1 < len(lines) {
-		result = append(result, lines[endLine+1:]...)
-	}
-
-	return result, nil
+	return nil
 }
