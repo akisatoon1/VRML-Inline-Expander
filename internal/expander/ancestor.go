@@ -1,5 +1,7 @@
 package expander
 
+import "maps"
+
 // List of ancestor file paths referencing this file.
 // for preventing circular references
 type ancestorSet struct {
@@ -20,15 +22,13 @@ func (as ancestorSet) contains(absPath string) bool {
 
 // Returns a new ancestorSet with absPath added. The original set remains unchanged.
 func (as ancestorSet) add(absPath string) ancestorSet {
-	newFiles := make(map[string]struct{}, len(as.fileAbsPaths)+1)
+	newPaths := make(map[string]struct{}, len(as.fileAbsPaths)+1)
 
-	for k, v := range as.fileAbsPaths {
-		newFiles[k] = v
-	}
+	maps.Copy(newPaths, as.fileAbsPaths)
 
-	newFiles[absPath] = struct{}{}
+	newPaths[absPath] = struct{}{}
 
 	return ancestorSet{
-		fileAbsPaths: newFiles,
+		fileAbsPaths: newPaths,
 	}
 }
