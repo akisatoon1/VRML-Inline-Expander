@@ -43,32 +43,50 @@ func resolveAbsolutePath(baseFilePath, relativePath string) (absPath string, err
 
 // buildGroupNode builds a Group node with children from the referenced file content
 func buildGroupNode(node parser.InlineNode, refLines []string) []string {
-	var result []string
+	// Group Node layout
+	/*
+		Group {
+		  children [
+		    ... // content from referenced file
+		  ]
+		}
+	*/
+	const layout = `%sGroup {
+  children [
+%s
+  ]
+}`
 
-	// Build the Group node header
-	if node.DefName != "" {
-		result = append(result, fmt.Sprintf("DEF %s Group {", node.DefName))
-	} else {
-		result = append(result, "Group {")
+	defPart := createDefDeclaration(node.DefName)
+
+	childrenBlock := joinWithIndent(refLines, "    ")
+
+	layoutResult := fmt.Sprintf(layout, defPart, childrenBlock)
+
+	return strings.Split(layoutResult, "\n")
+}
+
+// createDefDeclaration returns the DEF part of a node declaration
+// If defName is empty, returns empty string
+// Otherwise, returns "DEF <defName> " with trailing space
+func createDefDeclaration(defName string) string {
+	if defName == "" {
+		return ""
 	}
+	return fmt.Sprintf("DEF %s ", defName)
+}
 
-	// Add children field
-	result = append(result, "  children [")
-
-	// Add referenced content with indentation
-	for _, line := range refLines {
-		// Skip empty lines at the beginning and end
+func joinWithIndent(lines []string, indent string) string {
+	var builder strings.Builder
+	for _, line := range lines {
 		if strings.TrimSpace(line) == "" {
 			continue
 		}
-		result = append(result, "    "+line)
+		builder.WriteString(indent)
+		builder.WriteString(line)
+		builder.WriteString("\n")
 	}
-
-	// Close children and Group
-	result = append(result, "  ]")
-	result = append(result, "}")
-
-	return result
+	return strings.TrimRight(builder.String(), "\n")
 }
 
 // replaceLines replaces lines in the closed interval [startLine, endLine] with newLines.
