@@ -87,7 +87,7 @@ func (e *Expander) expandInlineNodes(absPath string, ancestors ancestorSet) ([]s
 		nodesWithContent[i] = nwc
 	}
 
-	expandedLines, err := e.expandLines(lines, nodesWithContent)
+	expandedLines, err := expandLines(lines, nodesWithContent)
 	if err != nil {
 		return nil, fmt.Errorf("failed to expand lines: %w", err)
 	}
@@ -117,7 +117,7 @@ func (e *Expander) expandInlineNode(basePath string, node parser.InlineNode, anc
 }
 
 // expandLines expands Inline nodes in the given lines (testable)
-func (e *Expander) expandLines(lines []string, nodesWithContent []nodeWithContent) ([]string, error) {
+func expandLines(lines []string, nodesWithContent []nodeWithContent) ([]string, error) {
 	result := lines
 
 	// Process nodes in reverse order to avoid line number shifts
