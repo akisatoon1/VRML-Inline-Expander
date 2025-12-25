@@ -1,36 +1,34 @@
 package expander
 
-import "fmt"
-
-// processingStack manages files currently being processed to detect circular references
-type processingStack struct {
-	files map[string]bool
+// List of ancestor file paths referencing this file.
+// for preventing circular references
+type ancestorSet struct {
+	fileAbsPaths map[string]struct{}
 }
 
-// newProcessingStack creates a new processingStack
-func newProcessingStack() *processingStack {
-	return &processingStack{
-		files: make(map[string]bool),
+func newEmptyAncestorSet() ancestorSet {
+	return ancestorSet{
+		fileAbsPaths: make(map[string]struct{}),
 	}
 }
 
-// enter adds a file to the processing stack
-// Returns error if the file is already being processed (circular reference)
-func (ps *processingStack) enter(path string) error {
-	if ps == nil {
-		return fmt.Errorf("processing stack is nil")
-	}
-	if ps.files[path] {
-		return fmt.Errorf("circular reference detected: %s", path)
-	}
-	ps.files[path] = true
-	return nil
+// The presence of absPath in the ancestor set indicates a circular reference.
+func (as ancestorSet) contains(absPath string) bool {
+	_, exists := as.fileAbsPaths[absPath]
+	return exists
 }
 
-// exit removes a file from the processing stack
-func (ps *processingStack) exit(path string) {
-	if ps == nil || ps.files == nil {
-		return // TODO: 異常終了するべき
+// Returns a new ancestorSet with absPath added. The original set remains unchanged.
+func (as ancestorSet) add(absPath string) ancestorSet {
+	newFiles := make(map[string]struct{}, len(as.fileAbsPaths)+1)
+
+	for k, v := range as.fileAbsPaths {
+		newFiles[k] = v
 	}
-	delete(ps.files, path)
+
+	newFiles[absPath] = struct{}{}
+
+	return ancestorSet{
+		fileAbsPaths: newFiles,
+	}
 }

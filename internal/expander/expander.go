@@ -41,15 +41,15 @@ func (e *Expander) Expand(inputPath, outputPath string) error {
 		return fmt.Errorf("expander not properly initialized, use New()")
 	}
 
-	// Initialize processing stack for circular reference detection
-	stack := newProcessingStack()
+	// for circular reference detection
+	ancestors := newEmptyAncestorSet()
 
 	inputAbsPath, err := filepath.Abs(inputPath)
 	if err != nil {
 		return fmt.Errorf("failed to get absolute path for input file: %w", err)
 	}
 
-	expandedLines, err := e.expandInlineNodes(inputAbsPath, stack)
+	expandedLines, err := e.expandInlineNodes(inputAbsPath, ancestors)
 	if err != nil {
 		return fmt.Errorf("failed to expand Inline nodes: %w", err)
 	}
@@ -61,13 +61,11 @@ func (e *Expander) Expand(inputPath, outputPath string) error {
 	return nil
 }
 
-func (e *Expander) expandInlineNodes(absPath string, stack *processingStack) ([]string, error) {
+func (e *Expander) expandInlineNodes(absPath string, ancestors ancestorSet) ([]string, error) {
 	// Circular reference guard - check if already processing this file
-	if err := stack.enter(absPath); err != nil {
-		return nil, err
+	if ancestors.contains(absPath) {
+		return nil, fmt.Errorf("circular reference detected for file: %s", absPath)
 	}
-	// Exit on function completion
-	defer stack.exit(absPath)
 
 	lines, err := e.reader.Read(absPath)
 	if err != nil {
@@ -82,7 +80,7 @@ func (e *Expander) expandInlineNodes(absPath string, stack *processingStack) ([]
 	// Read referenced files for each node
 	nodesWithContent := make([]nodeWithContent, len(nodes))
 	for i, node := range nodes {
-		nwc, err := e.expandInlineNode(absPath, node, stack)
+		nwc, err := e.expandInlineNode(absPath, node, ancestors.add(absPath))
 		if err != nil {
 			return nil, err
 		}
@@ -97,14 +95,14 @@ func (e *Expander) expandInlineNodes(absPath string, stack *processingStack) ([]
 }
 
 // expandInlineNode expands a single Inline node
-func (e *Expander) expandInlineNode(basePath string, node parser.InlineNode, stack *processingStack) (nodeWithContent, error) {
+func (e *Expander) expandInlineNode(basePath string, node parser.InlineNode, ancestors ancestorSet) (nodeWithContent, error) {
 	refAbsPath, err := resolveAbsolutePath(basePath, node.UrlPath)
 	if err != nil {
 		return nodeWithContent{}, fmt.Errorf("failed to resolve path for referenced file '%s': %w", node.UrlPath, err)
 	}
 
 	// Recursive call with stack
-	refLines, err := e.expandInlineNodes(refAbsPath, stack)
+	refLines, err := e.expandInlineNodes(refAbsPath, ancestors)
 	if err != nil {
 		return nodeWithContent{}, fmt.Errorf("failed to expand referenced file '%s' from '%s': %w", node.UrlPath, basePath, err)
 	}
