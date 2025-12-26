@@ -9,7 +9,7 @@ import (
 
 type testCase struct {
 	name        string
-	sampleDir   string
+	targetDir   string
 	inputFile   string
 	outputFile  string
 	shouldError bool
@@ -26,36 +26,36 @@ func TestCLI(t *testing.T) {
 	// Test cases
 	testCases := []testCase{
 		{
-			name:        "sample1",
-			sampleDir:   "sample1",
+			name:        "single reference",
+			targetDir:   "single-reference",
 			inputFile:   "top.wrl",
 			outputFile:  "merged.wrl",
 			shouldError: false,
 		},
 		{
-			name:        "sample2",
-			sampleDir:   "sample2",
+			name:        "recursive references",
+			targetDir:   "recursive-references",
 			inputFile:   "top.wrl",
 			outputFile:  "merged.wrl",
 			shouldError: false,
 		},
 		{
-			name:        "sample3 - nonexistent referenced file",
-			sampleDir:   "sample3",
+			name:        "url refer to not existing file",
+			targetDir:   "url-refer-to-not-existing-file",
 			inputFile:   "top.wrl",
 			outputFile:  "merged.wrl",
 			shouldError: true,
 		},
 		{
-			name:        "sample4 - cyclic reference",
-			sampleDir:   "sample4",
+			name:        "cyclic reference",
+			targetDir:   "cyclic-reference",
 			inputFile:   "top.wrl",
 			outputFile:  "merged.wrl",
 			shouldError: true,
 		},
 		{
-			name:        "sample5",
-			sampleDir:   "sample5",
+			name:        "reference to file in subdirectory",
+			targetDir:   "reference-to-file-in-subdirectory",
 			inputFile:   "top.wrl",
 			outputFile:  "merged.wrl",
 			shouldError: false,
@@ -71,9 +71,9 @@ func TestCLI(t *testing.T) {
 
 func runTestCase(t *testing.T, tc testCase) {
 	// Prepare paths
-	inputPath := filepath.Join("testdata", "input", tc.sampleDir, tc.inputFile)
-	expectedPath := filepath.Join("testdata", "expected", tc.sampleDir, tc.outputFile)
-	outputPath := filepath.Join("testdata", "output", tc.sampleDir, tc.outputFile)
+	inputPath := filepath.Join("testdata", "input", tc.targetDir, tc.inputFile)
+	expectedPath := filepath.Join("testdata", "expected", tc.targetDir, tc.outputFile)
+	outputPath := filepath.Join("testdata", "output", tc.targetDir, tc.outputFile)
 
 	// Check if input file exists
 	if isNotFileExists(inputPath) {
@@ -81,7 +81,7 @@ func runTestCase(t *testing.T, tc testCase) {
 	}
 
 	// Create output directory if not exists
-	prepareOutputDirectory(t, tc.sampleDir)
+	prepareOutputDirectory(t, tc.targetDir)
 
 	// Execute CLI tool
 	output, err := executeCLI(inputPath, outputPath)
