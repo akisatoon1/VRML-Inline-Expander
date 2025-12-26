@@ -7,6 +7,11 @@ import (
 	"github.com/akisatoon1/VRML-Inline-Expander/internal/expander"
 )
 
+// InlineExpander is an interface for expanding Inline nodes in VRML files
+type InlineExpander interface {
+	Expand(inputPath, outputPath string) error
+}
+
 func main() {
 	// Check command line arguments
 	if len(os.Args) != 3 {
@@ -18,7 +23,7 @@ func main() {
 	outputPath := os.Args[2]
 
 	// Create expander and execute
-	exp := expander.New()
+	var exp InlineExpander = expander.New()
 	err := exp.Expand(inputPath, outputPath)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
