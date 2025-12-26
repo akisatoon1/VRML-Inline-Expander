@@ -6,13 +6,14 @@ import (
 	"slices"
 
 	"github.com/akisatoon1/VRML-Inline-Expander/internal/parser"
+	"github.com/akisatoon1/VRML-Inline-Expander/internal/parser/lineparser"
 	"github.com/akisatoon1/VRML-Inline-Expander/internal/reader" // TODO: readerやwriterは自前で実装する必要ある？
 	"github.com/akisatoon1/VRML-Inline-Expander/internal/writer"
 )
 
 // Expander handles the expansion of Inline nodes
 type Expander struct {
-	parser *parser.Parser
+	parser inlineNodesFinder
 	reader *reader.Reader
 	writer *writer.Writer
 }
@@ -20,7 +21,7 @@ type Expander struct {
 // New creates a new Expander instance
 func New() *Expander {
 	return &Expander{
-		parser: parser.New(),
+		parser: lineparser.New(),
 		reader: reader.New(),
 		writer: writer.New(),
 	}

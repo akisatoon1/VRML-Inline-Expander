@@ -1,9 +1,18 @@
-package parser
+/*
+TODO: 仕様を満たす
+
+lineの配列で解析しているので、複数行にまたがるような文法を正しく認識できない。
+vrmlでは空白と改行は同じ区切り文字であり、改行を空白の代わりに使っていても正しくパースする必要あり。
+*/
+
+package lineparser
 
 import (
 	"fmt"
 	"regexp"
 	"strings"
+
+	"github.com/akisatoon1/VRML-Inline-Expander/internal/parser"
 )
 
 // Parser handles VRML parsing operations
@@ -15,8 +24,8 @@ func New() *Parser {
 }
 
 // FindInlineNodes finds all Inline nodes in the given content
-func (p *Parser) FindInlineNodes(lines []string) ([]InlineNode, error) {
-	var nodes []InlineNode
+func (p *Parser) FindInlineNodes(lines []string) ([]parser.InlineNode, error) {
+	var nodes []parser.InlineNode
 
 	i := 0
 	for i < len(lines) {
@@ -39,8 +48,8 @@ func (p *Parser) FindInlineNodes(lines []string) ([]InlineNode, error) {
 }
 
 // parseInlineNode parses an Inline node starting from the given line
-func (p *Parser) parseInlineNode(lines []string, startLine int) (InlineNode, int, error) {
-	node := InlineNode{
+func (p *Parser) parseInlineNode(lines []string, startLine int) (parser.InlineNode, int, error) {
+	node := parser.InlineNode{
 		StartLine: startLine,
 	}
 
