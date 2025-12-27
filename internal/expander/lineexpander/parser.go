@@ -1,4 +1,4 @@
-package expander
+package lineexpander
 
 import "github.com/akisatoon1/VRML-Inline-Expander/internal/parser"
 

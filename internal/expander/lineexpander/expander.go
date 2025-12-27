@@ -1,10 +1,11 @@
-package expander
+package lineexpander
 
 import (
 	"fmt"
 	"path/filepath"
 	"slices"
 
+	"github.com/akisatoon1/VRML-Inline-Expander/internal/expander"
 	"github.com/akisatoon1/VRML-Inline-Expander/internal/parser"
 	"github.com/akisatoon1/VRML-Inline-Expander/internal/parser/lineparser"
 	"github.com/akisatoon1/VRML-Inline-Expander/internal/reader" // TODO: readerやwriterは自前で実装する必要ある？
@@ -56,7 +57,7 @@ func (e *Expander) Expand(inputPath, outputPath string) error {
 
 func (e *Expander) expandFile(inputPath string) ([]string, error) {
 	// for circular reference detection
-	ancestors := newEmptyAncestorSet()
+	ancestors := expander.NewEmptyAncestorSet()
 
 	inputAbsPath, err := filepath.Abs(inputPath)
 	if err != nil {
@@ -70,9 +71,9 @@ func (e *Expander) expandFile(inputPath string) ([]string, error) {
 	return expandedLines, nil
 }
 
-func (e *Expander) expandInlineNodes(absPath string, ancestors ancestorSet) ([]string, error) {
+func (e *Expander) expandInlineNodes(absPath string, ancestors expander.AncestorSet) ([]string, error) {
 	// Circular reference guard - check if already processing this file
-	if ancestors.contains(absPath) {
+	if ancestors.Contain(absPath) {
 		return nil, fmt.Errorf("circular reference detected for file: %s", absPath)
 	}
 
@@ -93,7 +94,7 @@ func (e *Expander) expandInlineNodes(absPath string, ancestors ancestorSet) ([]s
 	return expandedLines, nil
 }
 
-func (e *Expander) getNodesWithContent(absPath string, lines []string, ancestors ancestorSet) ([]nodeWithContent, error) {
+func (e *Expander) getNodesWithContent(absPath string, lines []string, ancestors expander.AncestorSet) ([]nodeWithContent, error) {
 	nodes, err := e.parser.FindInlineNodes(lines)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse Inline nodes: %w", err)
@@ -102,7 +103,7 @@ func (e *Expander) getNodesWithContent(absPath string, lines []string, ancestors
 	// Read referenced files for each node
 	nodesWithContent := make([]nodeWithContent, len(nodes))
 	for i, node := range nodes {
-		nwc, err := e.expandInlineNode(absPath, node, ancestors.add(absPath))
+		nwc, err := e.expandInlineNode(absPath, node, ancestors.Add(absPath))
 		if err != nil {
 			return nil, err
 		}
@@ -113,7 +114,7 @@ func (e *Expander) getNodesWithContent(absPath string, lines []string, ancestors
 }
 
 // expandInlineNode expands a single Inline node
-func (e *Expander) expandInlineNode(basePath string, node parser.InlineNode, ancestors ancestorSet) (nodeWithContent, error) {
+func (e *Expander) expandInlineNode(basePath string, node parser.InlineNode, ancestors expander.AncestorSet) (nodeWithContent, error) {
 	refAbsPath, err := resolveAbsolutePath(basePath, node.UrlPath)
 	if err != nil {
 		return nodeWithContent{}, fmt.Errorf("failed to resolve path for referenced file '%s': %w", node.UrlPath, err)

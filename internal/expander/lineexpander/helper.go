@@ -1,4 +1,4 @@
-package expander
+package lineexpander
 
 import (
 	"fmt"
