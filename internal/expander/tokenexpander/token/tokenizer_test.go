@@ -20,11 +20,54 @@ type testcase struct {
 func TestTokenizer_Tokenize(t *testing.T) {
 	tests := []testcase{
 		{
-			name:  "dummy case",
-			input: "DEF MyShape Shape { }",
-			expected: []string{
-				"DEF", "MyShape", "Shape", "{", "}",
-			},
+			name:     "comment",
+			input:    "#comment\n",
+			expected: []string{},
+		},
+		{
+			name:     "hashtag in string",
+			input:    "\"#\"",
+			expected: []string{"#"},
+		},
+		{
+			name:     "whitespace",
+			input:    "\r\n \t,",
+			expected: []string{},
+		},
+		{
+			name:     "whitespace in string",
+			input:    "\"\r\n \t,\"",
+			expected: []string{"\r\n \t,"},
+		},
+		{
+			name:     "split by space",
+			input:    "1 1",
+			expected: []string{"1", "1"},
+		},
+		{
+			name:     "split by spaces",
+			input:    "1          1",
+			expected: []string{"1", "1"},
+		},
+		{
+			name:     "split by any whitespace and comments",
+			input:    "1\r\n \t,#comment\n1",
+			expected: []string{"1", "1"},
+		},
+		{
+			name:     "string",
+			input:    "\"string\"",
+			expected: []string{"string"},
+		},
+		{
+			name:     "double quote in string",
+			input:    "\"",
+			expected: []string{"\""},
+		},
+		{
+			name:     "back slash in string",
+			input:    "\\",
+			expected: []string{"\\"},
 		},
 	}
 
