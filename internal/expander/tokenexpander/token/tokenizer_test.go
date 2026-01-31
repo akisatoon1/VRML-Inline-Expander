@@ -69,6 +69,51 @@ func TestTokenizer_Tokenize(t *testing.T) {
 			input:    "\"\\\\\"",
 			expected: []string{"\\"},
 		},
+		{
+			name:     "int32 base-10",
+			input:    "123",
+			expected: []string{"123"},
+		},
+		{
+			name:     "int32 base-10 plus",
+			input:    "+123",
+			expected: []string{"+123"},
+		},
+		{
+			name:     "int32 base-10 minus",
+			input:    "-123",
+			expected: []string{"-123"},
+		},
+		{
+			name:     "int32 base-16 small x",
+			input:    "0x7B",
+			expected: []string{"0x7B"},
+		},
+		{
+			name:     "int32 base-16 large X",
+			input:    "0X7B",
+			expected: []string{"0X7B"},
+		},
+		{
+			name:     "int32 base-16 small x plus",
+			input:    "+0x7B",
+			expected: []string{"+0x7B"},
+		},
+		{
+			name:     "int32 base-16 large X plus",
+			input:    "+0X7B",
+			expected: []string{"+0X7B"},
+		},
+		{
+			name:     "int32 base-16 small x minus",
+			input:    "-0x7B",
+			expected: []string{"-0x7B"},
+		},
+		{
+			name:     "int32 base-16 large X minus",
+			input:    "-0X7B",
+			expected: []string{"-0X7B"},
+		},
 	}
 
 	testAllCases(t, tests)
