@@ -61,12 +61,12 @@ func TestTokenizer_Tokenize(t *testing.T) {
 		},
 		{
 			name:     "double quote in string",
-			input:    "\"",
+			input:    "\"\\\"\"",
 			expected: []string{"\""},
 		},
 		{
 			name:     "back slash in string",
-			input:    "\\",
+			input:    "\"\\\\\"",
 			expected: []string{"\\"},
 		},
 	}
