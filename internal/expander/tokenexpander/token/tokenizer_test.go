@@ -70,6 +70,11 @@ func TestTokenizer_Tokenize(t *testing.T) {
 			expected: []string{"\\"},
 		},
 		{
+			name:     "sequencial strings",
+			input:    "\"string1\"\"string2\"",
+			expected: []string{"string1", "string2"},
+		},
+		{
 			name:     "int32 base-10",
 			input:    "123",
 			expected: []string{"123"},
