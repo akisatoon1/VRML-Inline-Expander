@@ -114,8 +114,47 @@ func TestTokenizer_Tokenize(t *testing.T) {
 			input:    "-0X7B",
 			expected: []string{"-0X7B"},
 		},
+		{
+			name:     "double",
+			input:    "123.456",
+			expected: []string{"123.456"},
+		},
+		{
+			name:     "double plus",
+			input:    "+123.456",
+			expected: []string{"+123.456"},
+		},
+		{
+			name:     "double minus",
+			input:    "-123.456",
+			expected: []string{"-123.456"},
+		},
+		{
+			name:     "double no fractional part",
+			input:    "123.",
+			expected: []string{"123."},
+		},
+		{
+			name:     "double small e",
+			input:    "1.2e2",
+			expected: []string{"1.2e2"},
+		},
+		{
+			name:     "double large E",
+			input:    "1.2E2",
+			expected: []string{"1.2E2"},
+		},
+		{
+			name:     "double e plus",
+			input:    "1.2e+2",
+			expected: []string{"1.2e+2"},
+		},
+		{
+			name:     "double e minus",
+			input:    "1.2e-2",
+			expected: []string{"1.2e-2"},
+		},
 	}
-
 	testAllCases(t, tests)
 }
 
