@@ -179,6 +179,36 @@ func TestTokenizer_Tokenize(t *testing.T) {
 			input:    "a+-",
 			expected: []string{"a+-"},
 		},
+		{
+			name:     "punct .",
+			input:    ".",
+			expected: []string{"."},
+		},
+		{
+			name:     "punct {",
+			input:    "{",
+			expected: []string{"{"},
+		},
+		{
+			name:     "punct }",
+			input:    "}",
+			expected: []string{"}"},
+		},
+		{
+			name:     "punct [",
+			input:    "[",
+			expected: []string{"["},
+		},
+		{
+			name:     "punct ]",
+			input:    "]",
+			expected: []string{"]"},
+		},
+		{
+			name:     "sequencial puncts",
+			input:    ".,{}[]",
+			expected: []string{".", ",", "{", "}", "[", "]"},
+		},
 	}
 	testAllCases(t, tests)
 }
