@@ -25,6 +25,11 @@ func TestTokenizer_Tokenize(t *testing.T) {
 			expected: []string{},
 		},
 		{
+			name:     "comment not end",
+			input:    "#comment",
+			expected: []string{},
+		},
+		{
 			name:     "hashtag in string",
 			input:    "\"#\"",
 			expected: []string{"#"},
