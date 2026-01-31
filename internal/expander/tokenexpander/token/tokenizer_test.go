@@ -154,6 +154,31 @@ func TestTokenizer_Tokenize(t *testing.T) {
 			input:    "1.2e-2",
 			expected: []string{"1.2e-2"},
 		},
+		{
+			name:     "ident only first char letter",
+			input:    "a",
+			expected: []string{"a"},
+		},
+		{
+			name:     "ident only first char upper",
+			input:    "A",
+			expected: []string{"A"},
+		},
+		{
+			name:     "ident only first char underbar",
+			input:    "_",
+			expected: []string{"_"},
+		},
+		{
+			name:     "ident",
+			input:    "ab",
+			expected: []string{"ab"},
+		},
+		{
+			name:     "ident sign",
+			input:    "a+-",
+			expected: []string{"a+-"},
+		},
 	}
 	testAllCases(t, tests)
 }
