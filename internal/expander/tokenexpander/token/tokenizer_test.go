@@ -80,6 +80,11 @@ func TestTokenizer_Tokenize(t *testing.T) {
 			expected: []string{"string1", "string2"},
 		},
 		{
+			name:     "other separated by string",
+			input:    "a\"string\"b",
+			expected: []string{"a", "string", "b"},
+		},
+		{
 			name:     "int32 base-10",
 			input:    "123",
 			expected: []string{"123"},
@@ -218,6 +223,16 @@ func TestTokenizer_Tokenize(t *testing.T) {
 			name:     "sequencial puncts",
 			input:    ".,{}[]",
 			expected: []string{".", ",", "{", "}", "[", "]"},
+		},
+		{
+			name:     "other separated by punct",
+			input:    "a.b,c{d}e[f]g",
+			expected: []string{"a", ".", "b", ",", "c", "{", "d", "}", "e", "[", "f", "]", "g"},
+		},
+		{
+			name:     "separator . and double",
+			input:    "a9.0.1",
+			expected: []string{"a9", ".", "0.1"},
 		},
 	}
 	testAllCases(t, tests)
