@@ -32,7 +32,7 @@ func TestTokenizer_Tokenize(t *testing.T) {
 		{
 			name:     "hashtag in string",
 			input:    "\"#\"",
-			expected: []token{{_type: string_t, value: "#"}},
+			expected: []token{{_type: string_t, value: "\"#\""}},
 		},
 		{
 			name:     "whitespace",
@@ -42,7 +42,7 @@ func TestTokenizer_Tokenize(t *testing.T) {
 		{
 			name:     "whitespace in string",
 			input:    "\"\r\n \t,\"",
-			expected: []token{{_type: string_t, value: "\r\n \t,"}},
+			expected: []token{{_type: string_t, value: "\"\r\n \t,\""}},
 		},
 		{
 			name:     "split by space",
@@ -62,27 +62,27 @@ func TestTokenizer_Tokenize(t *testing.T) {
 		{
 			name:     "string",
 			input:    "\"string\"",
-			expected: []token{{_type: string_t, value: "string"}},
+			expected: []token{{_type: string_t, value: "\"string\""}},
 		},
 		{
 			name:     "double quote in string",
 			input:    "\"\\\"\"",
-			expected: []token{{_type: string_t, value: "\""}},
+			expected: []token{{_type: string_t, value: "\"\\\"\""}},
 		},
 		{
 			name:     "back slash in string",
 			input:    "\"\\\\\"",
-			expected: []token{{_type: string_t, value: "\\"}},
+			expected: []token{{_type: string_t, value: "\"\\\\\""}},
 		},
 		{
 			name:     "sequencial strings",
 			input:    "\"string1\"\"string2\"",
-			expected: []token{{_type: string_t, value: "string1"}, {_type: string_t, value: "string2"}},
+			expected: []token{{_type: string_t, value: "\"string1\""}, {_type: string_t, value: "\"string2\""}},
 		},
 		{
 			name:     "other separated by string",
 			input:    "a\"string\"b",
-			expected: []token{{_type: ident_t, value: "a"}, {_type: string_t, value: "string"}, {_type: ident_t, value: "b"}},
+			expected: []token{{_type: ident_t, value: "a"}, {_type: string_t, value: "\"string\""}, {_type: ident_t, value: "b"}},
 		},
 		{
 			name:     "int32 base-10",
