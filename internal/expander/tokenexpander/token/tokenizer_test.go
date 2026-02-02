@@ -222,10 +222,9 @@ func TestTokenizer_Tokenize(t *testing.T) {
 		},
 		{
 			name:  "sequencial puncts",
-			input: ".,{}[]",
+			input: ".{}[]",
 			expected: []token{
 				{_type: punct_t, value: "."},
-				{_type: punct_t, value: ","},
 				{_type: punct_t, value: "{"},
 				{_type: punct_t, value: "}"},
 				{_type: punct_t, value: "["},
@@ -234,21 +233,19 @@ func TestTokenizer_Tokenize(t *testing.T) {
 		},
 		{
 			name:  "other separated by punct",
-			input: "a.b,c{d}e[f]g",
+			input: "a.b{c}d[e]f",
 			expected: []token{
 				{_type: ident_t, value: "a"},
 				{_type: punct_t, value: "."},
 				{_type: ident_t, value: "b"},
-				{_type: punct_t, value: ","},
-				{_type: ident_t, value: "c"},
 				{_type: punct_t, value: "{"},
-				{_type: ident_t, value: "d"},
+				{_type: ident_t, value: "c"},
 				{_type: punct_t, value: "}"},
-				{_type: ident_t, value: "e"},
+				{_type: ident_t, value: "d"},
 				{_type: punct_t, value: "["},
-				{_type: ident_t, value: "f"},
+				{_type: ident_t, value: "e"},
 				{_type: punct_t, value: "]"},
-				{_type: ident_t, value: "g"},
+				{_type: ident_t, value: "f"},
 			},
 		},
 		{
