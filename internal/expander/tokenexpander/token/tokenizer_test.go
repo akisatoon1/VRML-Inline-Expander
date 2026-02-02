@@ -5,6 +5,7 @@
 package token
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -285,7 +286,7 @@ func assertTokensEqual(t *testing.T, got []expander.Token, expected []token) {
 
 	if len(got) != len(expected) {
 		t.Errorf("token count = %d, want %d\ngot:  %v\nwant: %v",
-			len(got), len(expected), got, expected)
+			len(got), len(expected), formatExpanderTokens(got), formatTokens(expected))
 		return
 	}
 
@@ -293,11 +294,55 @@ func assertTokensEqual(t *testing.T, got []expander.Token, expected []token) {
 		gotToken, expectedToken := got[i].(token), expected[i]
 
 		if gotToken._type != expectedToken._type {
-			t.Errorf("Token[%d] type = %d, want %d", i, gotToken._type, expectedToken._type)
+			t.Errorf("Token[%d] type = %s, want %s\ngot: %v\nwant: %v", i, tokenTypeToString(gotToken._type), tokenTypeToString(expectedToken._type), formatExpanderTokens([]expander.Token{got[i]}), formatTokens([]token{expectedToken}))
 		}
 
 		if gotToken.GetValue() != expectedToken.value {
-			t.Errorf("Token[%d] = %q, want %q", i, gotToken.GetValue(), expectedToken.value)
+			t.Errorf("Token[%d] = %q, want %q\ngot: %v\nwant: %v", i, gotToken.GetValue(), expectedToken.value, formatExpanderTokens([]expander.Token{got[i]}), formatTokens([]token{expectedToken}))
 		}
+	}
+}
+
+// formatTokens formats token for debug output
+func formatTokens(tokens []token) string {
+	return formatTokensGeneric(tokens, func(tok token) (tokenType, string) {
+		return tok._type, tok.value
+	})
+}
+
+// formatExpanderTokens formats expander.Token for debug output
+func formatExpanderTokens(tokens []expander.Token) string {
+	convertedTokens := make([]token, len(tokens))
+	for i, tok := range tokens {
+		convertedTokens[i] = tok.(token)
+	}
+	return formatTokens(convertedTokens)
+}
+
+// formatTokensGeneric is a generic helper to format tokens
+func formatTokensGeneric[T any](tokens []T, extract func(T) (tokenType, string)) string {
+	var result []string
+	for _, tok := range tokens {
+		_type, value := extract(tok)
+		result = append(result, fmt.Sprintf("{%s: %q}", tokenTypeToString(_type), value))
+	}
+	return "[" + strings.Join(result, ", ") + "]"
+}
+
+// convert tokenType to string for debug purpose
+func tokenTypeToString(t tokenType) string {
+	switch t {
+	case punct_t:
+		return "Punct"
+	case ident_t:
+		return "Ident"
+	case number_t:
+		return "Number"
+	case string_t:
+		return "String"
+	case whitespace_t:
+		return "Whitespace"
+	default:
+		return "Unknown"
 	}
 }
