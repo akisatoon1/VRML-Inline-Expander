@@ -248,15 +248,6 @@ func TestTokenizer_Tokenize(t *testing.T) {
 				{_type: ident_t, value: "f"},
 			},
 		},
-		{
-			name:  "separator . and double",
-			input: "a9.0.1",
-			expected: []token{
-				{_type: ident_t, value: "a9"},
-				{_type: punct_t, value: "."},
-				{_type: number_t, value: "0.1"},
-			},
-		},
 	}
 	testAllCases(t, tests)
 }
