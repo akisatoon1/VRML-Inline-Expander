@@ -74,6 +74,9 @@ The `Inline` node has been replaced with a `Group` node, and the referenced file
 - Duplicate references to the same file are not expected
 - Assumes no DEF name collisions between files
 
+## System Configuration
+[system configuration](/system.md)
+
 ## License
 
 MIT License

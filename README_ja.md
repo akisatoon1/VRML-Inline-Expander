@@ -74,6 +74,9 @@ Group { children [Shape { geometry Sphere { } } ] }
 - 同一ファイルへの重複参照は想定していません
 - ファイル間でのDEF名の衝突がないことを前提としています
 
+## システム構成図
+[システム構成図](/system.md)
+
 ## ライセンス
 
 MIT License
